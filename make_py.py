@@ -1,11 +1,15 @@
 import os
+from types import SimpleNamespace
 
 fileExist = os.path.exists
 
 def check_all_str(values):
-  if isinstance(values, str):
+  if isinstance(values, (str, Target)):
     return True
-  return all([isinstance(item, str) for item in values])
+  for value in values:
+    if not isinstance(value, (str, Target)):
+      return False
+  return True
 
 def get_timestamp(file): 
   if fileExist(file):
@@ -30,22 +34,29 @@ def get_target_instance(target):
 class Target:
   _instances = []
 
-  def __init__(self, targets, deps, phony = False, helper = ""):
+  def __init__(self, name, targets, deps, phony = False, helper = None):
     self.targets = []
     self.deps = []
     self.actions = []
+    self.name = name
 
     if not check_all_str(targets):
       raise TypeError("Target is neither a str nor a list")
-    self.targets += targets
+    if isinstance(targets, (str, Target)):
+      self.targets.append(targets)
+    else:
+      self.targets += targets
 
 
     if not check_all_str(deps):
       raise TypeError("Dep is neither a str nor a list")
-    self.deps += deps
+    if isinstance(deps, (str, Target)):
+      self.deps.append(deps)
+    else:
+      self.deps += deps
 
     self.phone = phony
-    if helper != "": print(helper)
+    if helper: print(helper)
     
     Target._instances.append(self)
 
@@ -74,23 +85,35 @@ class Target:
   def get_all_instances(cls):
     return cls._instances
 
-  def __call__(self):
+  def __call__(self, func = None):
+    if callable(func):
+      self.actions.append(SimpleNamespace(func=func, name=func.__name__))
+      def wrapper(*args, **kwargs):
+        return func(*args, **kwargs)
+      return wrapper
+
     all_targets_insts = Target.get_all_instances()
     execute_actions = len(self.deps) == 0
-    for dep in self.deps:
+    deps = [item for d in self.deps for item in (d.targets if isinstance(d, Target) else [d])] #I know not the best readability but saves 5 lines!
+
+    for dep in deps:
       #check if there is a target for this dep, if so execute that target
       target_to_execute = get_target_instance(dep)
       if target_to_execute is not None:
         target_to_execute()
 
       if not fileExist(dep): #There is no target and the file doesn't exist
-          raise Exception(f"The {dep} file doesn't exit and there is no target for it")
+        raise FileNotFoundError(f"The {dep} file doesn't exit and there is no target for it")
       elif is_dep_newer(dep, self.targets):
         execute_actions = True
     
     if execute_actions:
+      if len(self.actions):
+        print(f"Executing target: {self.name}")
       for action in self.actions:
-        action()
+        print(f"Executing target's action: {action.name}")
+        action.func()
+
 
           
 

@@ -1,39 +1,24 @@
 import os
 
+fileExist = os.path.exists
 
 def check_all_str(values):
   if isinstance(values, str):
     return True
   return all([isinstance(item, str) for item in values])
 
-def check_timestamp(targets, deps):
-  target_times = {file: os.path.getmtime(file) for file in targets if os.path.exists(file)}
-  dep_times = {file: os.path.getmtime(file) for file in deps if os.path.exists(file)}
-
-  ret = []
-  for dep_file, dep_time in dep_times.items():
-    for target, target_time in target_times.items():
-      if dep_time > target_time:
-        ret += dep_time
-  return ret
-
-
-fileExist = os.path.exists
-
 def get_timestamp(file): 
   if fileExist(file):
     return os.path.getmtime(file)
   return 0
 
-
 def is_dep_newer(dep, targets):
-  print(targets)
+  # print(targets)
   dep_time = get_timestamp(dep)
   for target in targets:
     if get_timestamp(target) < dep_time:
       return True
   return False
-      
 
 def get_target_instance(target):
   all_targets_insts = Target.get_all_instances()
@@ -41,7 +26,6 @@ def get_target_instance(target):
     if target in inst.targets:
       return inst
   return None
-
 
 class Target:
   _instances = []
@@ -61,13 +45,16 @@ class Target:
     self.deps += deps
 
     self.phone = phony
-    if helper is not None: print(helper)
+    if helper != "": print(helper)
     
     Target._instances.append(self)
 
-  @classmethod
-  def get_all_instances(cls):
-    return cls._instances
+  
+  def add_action(self, func):
+    self.actions.append(func)
+    def wrapper(*args, **kwargs):
+      return func(*args, **kwargs)
+    return wrapper
 
   def add_target(targets):
     if not check_all_str(targets):
@@ -83,29 +70,44 @@ class Target:
     for target in targets:
       self.targets.remove(target)
 
+  @classmethod
+  def get_all_instances(cls):
+    return cls._instances
+
   def __call__(self):
     all_targets_insts = Target.get_all_instances()
-    execute_action = False
+    execute_actions = len(self.deps) == 0
     for dep in self.deps:
       #check if there is a target for this dep, if so execute that target
       target_to_execute = get_target_instance(dep)
       if target_to_execute is not None:
         target_to_execute()
-      elif not fileExist(dep): #There is no target and the file doesn't exist
+
+      if not fileExist(dep): #There is no target and the file doesn't exist
           raise Exception(f"The {dep} file doesn't exit and there is no target for it")
       elif is_dep_newer(dep, self.targets):
-        execute_action = True
+        execute_actions = True
     
-    if execute_action:
-      print("ola")
-      # for action in self.actions:
-      #   action()
+    if execute_actions:
+      for action in self.actions:
+        action()
 
           
 
-t = Target("t",["file3"])
-file3 = Target("file3",["file2"])
-file2 = Target("file2",["file1"])
-file1 = Target("file1",[])
+action1 = Target(["t"],["file3"])
+action2 = Target(["file3"],["file2"])
+action3 = Target(["file2"],["file1"])
 
-t()
+@action1.add_action
+def t_Action():
+  print("t")
+
+@action2.add_action
+def file3_Action():
+  print("file3")
+
+@action3.add_action
+def file2_Action():
+  print("file2")
+
+action1()

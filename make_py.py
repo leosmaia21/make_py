@@ -36,12 +36,12 @@ class Target:
     self.actions = []
 
     if not check_all_str(targets):
-      raise TypeError("Target is not neither a str nor a list")
+      raise TypeError("Target is neither a str nor a list")
     self.targets += targets
 
 
     if not check_all_str(deps):
-      raise TypeError("Dep is not neither a str nor a list")
+      raise TypeError("Dep is neither a str nor a list")
     self.deps += deps
 
     self.phone = phony
@@ -58,12 +58,12 @@ class Target:
 
   def add_target(targets):
     if not check_all_str(targets):
-      raise TypeError("Target is not neither a str nor a list")
+      raise TypeError("Target is neither a str nor a list")
     self.targets += targets
 
   def remove_target(targets):
     if not check_all_str(targets):
-      raise TypeError("Target is not neither a str nor a list")
+      raise TypeError("Target is neither a str nor a list")
     if isinstance(targets, str):
       targets = [targets]
 
@@ -105,9 +105,11 @@ def t_Action():
 @action2.add_action
 def file3_Action():
   print("file3")
+  os.system("touch file3")
 
 @action3.add_action
 def file2_Action():
   print("file2")
+  os.system("touch file2")
 
 action1()

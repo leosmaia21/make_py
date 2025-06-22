@@ -92,14 +92,12 @@ class Target:
         return func(*args, **kwargs)
       return wrapper
 
-    all_targets_insts = Target.get_all_instances()
     execute_actions = len(self.deps) == 0
     deps = [item for d in self.deps for item in (d.targets if isinstance(d, Target) else [d])] #I know not the best readability but saves 5 lines!
 
     for dep in deps:
       #check if there is a target for this dep, if so execute that target
-      target_to_execute = get_target_instance(dep)
-      if target_to_execute is not None:
+      if (target_to_execute:=get_target_instance(dep)) is not None:
         target_to_execute()
 
       if not fileExist(dep): #There is no target and the file doesn't exist
